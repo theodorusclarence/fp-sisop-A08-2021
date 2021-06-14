@@ -47,11 +47,11 @@ int main(int argc, char const *argv[]) {
 void promptDataManipulation(int sock) {
   char command[100];
   printf("⏰ waiting promptDataManipulation\n");
-  scanf("%s", command);
+  scanf("%s ", command);
 
   if (!strcmp(command, "CREATE")) {
     char type[100];
-    scanf("%s", type);
+    scanf("%s ", type);
 
     if (!strcmp(type, "TABLE")) {
       char tableName[100];
@@ -75,6 +75,7 @@ void promptTable(int sock, char *str) {
   str[strlen(str) - 1] = '\0';
 
   send(sock, str, strlen(str), 0);
+  return;
 }
 
 void promptDatabase(int sock, char *str) {
@@ -82,4 +83,5 @@ void promptDatabase(int sock, char *str) {
   str[strlen(str) - 1] = '\0';
 
   send(sock, str, strlen(str), 0);
+  return;
 }
