@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -10,6 +11,7 @@
 void promptDataManipulation(int sock);
 void promptTable(int sock, char *str);
 void promptDatabase(int sock, char *str);
+void logging(const char *user, const char *commands);
 
 int main(int argc, char const *argv[]) {
   struct sockaddr_in address;
@@ -46,9 +48,9 @@ int main(int argc, char const *argv[]) {
 
 void promptDataManipulation(int sock) {
   char command[100];
+  char commander[301];
   printf("⏰ waiting promptDataManipulation\n");
   scanf("%s ", command);
-
   if (!strcmp(command, "CREATE")) {
     char type[100];
     scanf("%s ", type);
@@ -59,15 +61,19 @@ void promptDataManipulation(int sock) {
       send(sock, "table", strlen("table"), 0);
       sleep(0.2);
       promptTable(sock, tableName);
+      sprintf(commander,"%s %s %s",command,type,tableName);
     } else if (!strcmp(type, "DATABASE")) {
       char dbName[100];
       scanf("%s", dbName);
       send(sock, "database", strlen("database"), 0);
       sleep(0.2);
       promptDatabase(sock, dbName);
+      sprintf(commander,"%s %s %s",command,type,dbName);
     }
     // promptDatabase(sock);
   }
+  
+  logging("USER",commander);
 };
 
 void promptTable(int sock, char *str) {
@@ -84,4 +90,22 @@ void promptDatabase(int sock, char *str) {
 
   send(sock, str, strlen(str), 0);
   return;
+}
+
+void logging(const char *user, const char *commands) {
+  FILE *fp;
+  fp = fopen("/home/yusuf/FP.log", "a");
+  char timestamp[1000];
+  time_t t = time(NULL);
+  struct tm tm = *localtime(&t);
+  //2021-05-19 02:05:15:jack:SELECT FROM table1
+  sprintf(timestamp, "%04d-%02d-%02d %02d:%02d:%02d",tm.tm_year + 1900, tm.tm_mon + 1,tm.tm_mday,
+           tm.tm_hour, tm.tm_min, tm.tm_sec);
+  fputs(timestamp, fp);
+  fputs(":", fp);
+  fputs(user, fp);
+  fputs(":", fp);
+  fputs(commands, fp);
+  fputs("\n", fp);
+  fclose(fp);
 }
