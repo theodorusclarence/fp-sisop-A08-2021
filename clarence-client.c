@@ -12,6 +12,7 @@ void promptDataManipulation(int sock);
 void promptTable(int sock, char *str, char *structure);
 void promptDatabase(int sock, char *str);
 void promptUse(int sock, char *str);
+void promptInsert(int sock, char *str, char *structure);
 void logging(const char *user, const char *commands);
 
 int main(int argc, char const *argv[]) {
@@ -77,6 +78,15 @@ void promptDataManipulation(int sock) {
       sprintf(commander,"%s %s %s",command,type,dbName);
     }
     // promptDatabase(sock);
+  } else if (!strcmp(command, "INSERT")) {
+    char tableName[100];
+    char tableStructure[100];
+    scanf(" INTO %s ", tableName);
+    getchar();
+    scanf("%[^\n]s)", tableStructure);
+    send(sock, "insert", strlen("insert"), 0);
+    sleep(0.2);
+    promptInsert(sock, tableName, tableStructure);
   } else if (!strcmp(command, "USE")) {
     char dbName[100];
     scanf("%s", dbName);
@@ -84,7 +94,11 @@ void promptDataManipulation(int sock) {
     sleep(0.2);
     promptUse(sock, dbName);
   }
-  
+
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("From Server: %s\n", buffer);
   logging("USER",commander);
 };
 
@@ -111,6 +125,16 @@ void promptUse(int sock, char *str) {
   str[strlen(str) - 1] = '\0';
 
   send(sock, str, strlen(str), 0);
+  return;
+}
+
+void promptInsert(int sock, char *str, char *structure) {
+  // Send tableName
+  send(sock, str, strlen(str), 0);
+  sleep(0.1);
+  
+  // send table properties
+  send(sock, structure, strlen(structure), 0);
   return;
 }
 

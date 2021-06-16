@@ -17,6 +17,16 @@ char databaseUsed[1050];
 void handleDatabase(int sock);
 void handleTable(int sock);
 void handleUse(int sock);
+void handleInsert(int sock);
+
+void sendSuccess(int sock) {
+  send(sock, "🐉 SUCCESS", strlen("🐉 SUCCESS"), 0);
+}
+void sendError(int sock, char text[]) {
+  char msg[1000];
+  sprintf(msg, "🔥 ERROR %s", text);
+  send(sock, msg, strlen(msg), 0);
+}
 
 int main(int argc, char const *argv[]) {
   // CREATE FILES FOLDER
@@ -78,7 +88,9 @@ int main(int argc, char const *argv[]) {
       handleTable(new_socket);
     } else if (!strcmp(buffer, "use")) {
       handleUse(new_socket);
-    }
+    } else if (!strcmp(buffer, "insert")) {
+      handleInsert(new_socket);
+    } 
   }
 
   return 0;
@@ -97,7 +109,7 @@ void handleDatabase(int sock) {
   system(folderCommand);
 
   // WRITE AVAILABLE DATABASE IN TXT FILES
-
+  sendSuccess(sock);
   return;
 }
 
@@ -114,6 +126,7 @@ void handleTable(int sock) {
 
   // ? If string is empty, then skip
   if (!strlen(databaseUsed)) { 
+    sendError(sock, "Database not found");
     return;
   }
 
@@ -141,9 +154,86 @@ void handleTable(int sock) {
         token++;
   }
 
-  fprintf(fp, "%s\n%s\n", columnNameLine, columnTypeLine);
-  fclose(fp);
+  sendSuccess(sock);
+}
 
+void handleInsert(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  // remove ) and ;
+
+  char structure[1024] = {0};
+  valread = read(sock, structure, 1024);
+  structure[strlen(structure) - 2] = '\0';
+
+  // ? If string is empty, then skip
+  if (!strlen(databaseUsed)) { 
+    sendError(sock, "Database not found");
+    return;
+  }
+
+  char tableDir[3000];
+  sprintf(tableDir, "databases/%s/%s", databaseUsed, buffer);
+
+  FILE* fp = fopen(tableDir, "r");
+
+  int count = 0;
+  char line[256];
+  while (fgets(line, sizeof line, fp) != NULL) {
+    if (count == 1) {
+      break;
+    } else count++;
+  }
+  fclose(fp);
+  fp = fopen(tableDir, "a+");
+
+  // TODO MOVE TYPES TO ARRAY `typeIsStr`
+  char* types = strtok (line, ";");
+  char typeIsStr[1000];
+  count = 0;
+  while (types) {
+    if (!strcmp(types, " ")) break;
+    typeIsStr[count] = !strcmp(types, "string");
+    count++;
+
+    types = strtok (NULL, ";");
+  }
+
+  char* token = strtok(structure, ",");
+  char insertBuffer[1000] = "";
+  count = 0;
+  int error = 0;
+  while (token) {
+    // Check if type is correct
+    int isStr = token[0] == '\'';
+    if (typeIsStr[count] != isStr) {
+      error = 1;
+      break;
+    }   
+
+    char temp1[201];
+    sprintf(temp1, "%s;", token);
+    strcat(insertBuffer, temp1);
+
+    count++;
+    token = strtok (NULL, ",");
+    while (token && *token == '\040')
+        token++;
+  }
+  // TODO IF GAADA ERROR THEN GAS INSERT
+  if (error) {
+    printf("ERRORRRRRRR\n");
+    sendError(sock, "String and Int Type Error");
+    return;
+  } else {
+    insertBuffer[strlen(insertBuffer) - 1] = '\0'; 
+    fprintf(fp, "%s\n", insertBuffer);
+  }
+
+  fclose(fp);
+  sendSuccess(sock);
   return;
 }
 
@@ -156,5 +246,6 @@ void handleUse(int sock) {
   sprintf(databaseUsed, "%s", buffer);
 
   printf("🚀 databaseUsed: %s\n", databaseUsed);
+  sendSuccess(sock);
   return;
 }
