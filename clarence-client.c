@@ -9,8 +9,9 @@
 #define PORT 8080
 
 void promptDataManipulation(int sock);
-void promptTable(int sock, char *str);
+void promptTable(int sock, char *str, char *structure);
 void promptDatabase(int sock, char *str);
+void promptUse(int sock, char *str);
 void logging(const char *user, const char *commands);
 
 int main(int argc, char const *argv[]) {
@@ -57,10 +58,15 @@ void promptDataManipulation(int sock) {
 
     if (!strcmp(type, "TABLE")) {
       char tableName[100];
-      scanf("%s", tableName);
+      scanf("%s ", tableName);
+      char tableStructure[100];
+      getchar();
+      scanf("%[^\n]s)", tableStructure);
+
       send(sock, "table", strlen("table"), 0);
       sleep(0.2);
-      promptTable(sock, tableName);
+
+      promptTable(sock, tableName, tableStructure);
       sprintf(commander,"%s %s %s",command,type,tableName);
     } else if (!strcmp(type, "DATABASE")) {
       char dbName[100];
@@ -71,16 +77,24 @@ void promptDataManipulation(int sock) {
       sprintf(commander,"%s %s %s",command,type,dbName);
     }
     // promptDatabase(sock);
+  } else if (!strcmp(command, "USE")) {
+    char dbName[100];
+    scanf("%s", dbName);
+    send(sock, "use", strlen("use"), 0);
+    sleep(0.2);
+    promptUse(sock, dbName);
   }
   
   logging("USER",commander);
 };
 
-void promptTable(int sock, char *str) {
-  // ? Remove `;`
-  str[strlen(str) - 1] = '\0';
-
+void promptTable(int sock, char *str, char *structure) {
+  // Send tableName
   send(sock, str, strlen(str), 0);
+  sleep(0.1);
+  
+  // send table properties
+  send(sock, structure, strlen(structure), 0);
   return;
 }
 
@@ -92,9 +106,17 @@ void promptDatabase(int sock, char *str) {
   return;
 }
 
+void promptUse(int sock, char *str) {
+  // ? Remove `;`
+  str[strlen(str) - 1] = '\0';
+
+  send(sock, str, strlen(str), 0);
+  return;
+}
+
 void logging(const char *user, const char *commands) {
   FILE *fp;
-  fp = fopen("/home/yusuf/FP.log", "a");
+  fp = fopen("/home/clarence/FP.log", "a");
   char timestamp[1000];
   time_t t = time(NULL);
   struct tm tm = *localtime(&t);

@@ -12,8 +12,11 @@
 #define PORT 8080
 #define SIZE 1024
 
+char databaseUsed[1050];
+
 void handleDatabase(int sock);
 void handleTable(int sock);
+void handleUse(int sock);
 
 int main(int argc, char const *argv[]) {
   // CREATE FILES FOLDER
@@ -73,6 +76,8 @@ int main(int argc, char const *argv[]) {
       handleDatabase(new_socket);
     } else if (!strcmp(buffer, "table")) {
       handleTable(new_socket);
+    } else if (!strcmp(buffer, "use")) {
+      handleUse(new_socket);
     }
   }
 
@@ -85,6 +90,14 @@ void handleDatabase(int sock) {
   char buffer[1024] = {0};
   valread = read(sock, buffer, 1024);
   printf("🚀 [handleDatabase()] first command: %s\n", buffer);
+
+  // CREATE DIRECTORY DATABASE
+  char folderCommand[1500];
+  sprintf(folderCommand, "mkdir -p databases/%s", buffer);
+  system(folderCommand);
+
+  // WRITE AVAILABLE DATABASE IN TXT FILES
+
   return;
 }
 
@@ -93,6 +106,55 @@ void handleTable(int sock) {
   int valread;
   char buffer[1024] = {0};
   valread = read(sock, buffer, 1024);
-  printf("🚀 [handleTable()] first command: %s\n", buffer);
+  // remove ) and ;
+
+  char structure[1024] = {0};
+  valread = read(sock, structure, 1024);
+  structure[strlen(structure) - 2] = '\0';
+
+  // ? If string is empty, then skip
+  if (!strlen(databaseUsed)) { 
+    return;
+  }
+
+  char tableDir[3000];
+  sprintf(tableDir, "databases/%s/%s", databaseUsed, buffer);
+
+  FILE* fp = fopen(tableDir, "w");
+  
+  char* token = strtok (structure, ",");
+  char columnNameLine[1000] = "", columnTypeLine[1000] = "";
+  while (token) {
+    // get token
+    char tableName[100], vartype[100];
+    sscanf(token, "%s %s", tableName, vartype); 
+
+    // Write to top of the table
+    char temp1[101], temp2[101];
+    sprintf(temp1, "%s;", tableName);
+    sprintf(temp2, "%s;", vartype);
+    strcat(columnNameLine, temp1);
+    strcat(columnTypeLine, temp2);
+
+    token = strtok (NULL, ",");
+    while (token && *token == '\040')
+        token++;
+  }
+
+  fprintf(fp, "%s\n%s\n", columnNameLine, columnTypeLine);
+  fclose(fp);
+
+  return;
+}
+
+void handleUse(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleUse()] first command: %s\n", buffer);
+  sprintf(databaseUsed, "%s", buffer);
+
+  printf("🚀 databaseUsed: %s\n", databaseUsed);
   return;
 }
