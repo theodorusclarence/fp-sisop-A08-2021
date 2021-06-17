@@ -18,6 +18,8 @@ void handleDatabase(int sock);
 void handleTable(int sock);
 void handleUse(int sock);
 void handleInsert(int sock);
+void handleDropDb(int sock);
+void handleDropTable(int sock);
 
 void sendSuccess(int sock) {
   send(sock, "🐉 SUCCESS", strlen("🐉 SUCCESS"), 0);
@@ -90,6 +92,8 @@ int main(int argc, char const *argv[]) {
       handleUse(new_socket);
     } else if (!strcmp(buffer, "insert")) {
       handleInsert(new_socket);
+    } else if (!strcmp(buffer, "drop-db")) {
+      handleDropDb(new_socket);
     } 
   }
 
@@ -157,6 +161,9 @@ void handleTable(int sock) {
     while (token && *token == '\040')
         token++;
   }
+
+  fprintf(fp, "%s\n%s\n", columnNameLine, columnTypeLine);
+  fclose(fp);
 
   sendSuccess(sock);
 }
@@ -273,7 +280,66 @@ void handleUse(int sock) {
   } else {
     sendError(sock, "No Database Found");
   }
+  return;
+}
 
+void handleDropDb(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleDropDb()] first command: %s\n", buffer);
 
+  // TODO CHECK IF DATABASE EXISTS
+  FILE* fp = fopen("dblist.txt", "rw");
+
+  int count = 0, found = 0;
+  char line[256];
+  while (fgets(line, sizeof line, fp) != NULL) {
+    // remove newline at the end    
+    line[strcspn(line, "\n")] = 0;
+
+    if (!strcmp(line, buffer)){
+      found = 1;
+      break;
+    }
+
+    count++;
+  }
+  fclose(fp);
+
+  if (!found) {
+    sendError(sock, "No Database Found");
+    return;
+  }
+
+  // TODO REMOVE FROM DBLIST
+  FILE  *fp2;
+  fp = fopen("dblist.txt", "r");
+  fp2 = fopen("temp.txt", "w");
+
+  char data[256];
+  while (fgets(data, sizeof data, fp) != NULL) {
+    printf("data: %s", data);
+    data[strcspn(data, "\n")] = 0;
+
+    // If not the db list that want to be deleted
+    if (strcmp(data, buffer)){
+      fprintf(fp2, "%s\n", data);
+    }
+
+    // bzero(data, 1024);
+  }
+  fclose(fp);
+  fclose(fp2);
+  remove("dblist.txt");
+  rename("temp.txt", "dblist.txt");
+
+  char folderCommand[1500];
+  sprintf(folderCommand, "rm -rf databases/%s", buffer);
+  system(folderCommand);
+  
+
+  sendSuccess(sock);
   return;
 }
