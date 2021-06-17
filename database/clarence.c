@@ -94,6 +94,8 @@ int main(int argc, char const *argv[]) {
       handleInsert(new_socket);
     } else if (!strcmp(buffer, "drop-db")) {
       handleDropDb(new_socket);
+    } else if (!strcmp(buffer, "drop-table")) {
+      handleDropTable(new_socket);
     } 
   }
 
@@ -134,7 +136,7 @@ void handleTable(int sock) {
 
   // ? If string is empty, then skip
   if (!strlen(databaseUsed)) { 
-    sendError(sock, "Database not found");
+    sendError(sock, "No database used, run `USE dbName;`");
     return;
   }
 
@@ -338,6 +340,37 @@ void handleDropDb(int sock) {
   char folderCommand[1500];
   sprintf(folderCommand, "rm -rf databases/%s", buffer);
   system(folderCommand);
+  
+  // REMOVE USED DATABASE
+  strcpy(databaseUsed, "");
+
+  sendSuccess(sock);
+  return;
+}
+
+void handleDropTable(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleDropTable()] first command: %s\n", buffer);
+
+  if (!strlen(databaseUsed)) {
+    sendError(sock, "No Database Used, try to run USE dbName;");
+    return;
+  }
+
+  // TODO CHECK IF TABLE EXISTS
+  char tablePath[2100];
+  sprintf(tablePath, "databases/%s/%s", databaseUsed, buffer);
+  FILE* fp = fopen(tablePath, "r");
+
+  if (!fp) {
+    sendError(sock, "No Database Found");
+    return;
+  }
+
+  remove(tablePath);
   
 
   sendSuccess(sock);

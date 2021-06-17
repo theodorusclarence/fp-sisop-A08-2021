@@ -12,6 +12,7 @@ void promptDataManipulation(int sock);
 void promptTable(int sock, char *str, char *structure);
 void promptDatabase(int sock, char *str);
 void promptDropDb(int sock, char *str);
+void promptDropTable(int sock, char *str);
 void promptUse(int sock, char *str);
 void promptInsert(int sock, char *str, char *structure);
 void logging(const char *user, const char *commands);
@@ -103,17 +104,12 @@ void promptDataManipulation(int sock) {
 
     // *================== DROP TABLE ==================
     if (!strcmp(type, "TABLE")) {
-      // char tableName[100];
-      // scanf("%s ", tableName);
-      // char tableStructure[100];
-      // getchar();
-      // scanf("%[^\n]s)", tableStructure);
-
-      // send(sock, "table", strlen("table"), 0);
-      // sleep(0.2);
-
-      // promptTable(sock, tableName, tableStructure);
-      // sprintf(commander,"%s %s %s",command,type,tableName);
+      char tableName[100];
+      scanf("%s", tableName);
+      send(sock, "drop-table", strlen("drop-table"), 0);
+      sleep(0.2);
+      promptDropTable(sock, tableName);
+      sprintf(commander,"%s %s %s",command,type,tableName);
     // *================== DROP DATABASE ==================
     } else if (!strcmp(type, "DATABASE")) {
       char dbName[100];
@@ -169,6 +165,14 @@ void promptInsert(int sock, char *str, char *structure) {
 }
 
 void promptDropDb(int sock, char *str) {
+  // ? Remove `;`
+  str[strlen(str) - 1] = '\0';
+
+  send(sock, str, strlen(str), 0);
+  return;
+}
+
+void promptDropTable(int sock, char *str) {
   // ? Remove `;`
   str[strlen(str) - 1] = '\0';
 
