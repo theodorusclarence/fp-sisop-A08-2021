@@ -109,6 +109,10 @@ void handleDatabase(int sock) {
   system(folderCommand);
 
   // WRITE AVAILABLE DATABASE IN TXT FILES
+  FILE* fp = fopen("dblist.txt", "a+");
+  fprintf(fp, "%s\n", buffer);
+  fclose(fp);
+
   sendSuccess(sock);
   return;
 }
@@ -243,9 +247,33 @@ void handleUse(int sock) {
   char buffer[1024] = {0};
   valread = read(sock, buffer, 1024);
   printf("🚀 [handleUse()] first command: %s\n", buffer);
-  sprintf(databaseUsed, "%s", buffer);
 
-  printf("🚀 databaseUsed: %s\n", databaseUsed);
-  sendSuccess(sock);
+  FILE* fp = fopen("dblist.txt", "r");
+
+  int count = 0, found = 0;
+  char line[256];
+  while (fgets(line, sizeof line, fp) != NULL) {
+    // remove newline at the end
+    line[strcspn(line, "\n")] = 0;
+
+    if (!strcmp(line, buffer)){
+      found = 1;
+      break;
+    }
+
+    count++;
+  }
+  fclose(fp);
+
+  if (found) {
+    sprintf(databaseUsed, "%s", buffer);
+
+    printf("🚀 databaseUsed: %s\n", databaseUsed);
+    sendSuccess(sock);
+  } else {
+    sendError(sock, "No Database Found");
+  }
+
+
   return;
 }
