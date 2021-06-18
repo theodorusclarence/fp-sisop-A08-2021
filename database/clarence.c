@@ -1,4 +1,3 @@
-
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -13,13 +12,24 @@
 #define SIZE 1024
 
 char databaseUsed[1050];
+int connection = 0;
+int currentConnection = 0;
+int id_socket[1000];
+int queue = 0;
 
+void *handleStart(void *args);
+void handleStopConnection(int sock);
 void handleDatabase(int sock);
 void handleTable(int sock);
 void handleUse(int sock);
 void handleInsert(int sock);
 void handleDropDb(int sock);
 void handleDropTable(int sock);
+void handleDropColumn(int sock);
+void handleSelect(int sock);
+void handleDelete(int sock);
+void handleUpdate(int sock);
+void handleShowDb(int sock);
 
 void sendSuccess(int sock) {
   send(sock, "🐉 SUCCESS", strlen("🐉 SUCCESS"), 0);
@@ -72,17 +82,51 @@ int main(int argc, char const *argv[]) {
 
   pthread_t tid[50];
 
-  if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
-                           (socklen_t *)&addrlen)) < 0) {
-    perror("accept");
-    exit(EXIT_FAILURE);
-  }
 
   while (1) {
+    if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
+                            (socklen_t *)&addrlen)) < 0) {
+      perror("accept");
+      exit(EXIT_FAILURE);
+    }
+
+    id_socket[currentConnection] = new_socket;
+
+    if (connection > 0) {
+      printf("📩 sending wait signal to currentConnection: %d\n",
+             currentConnection);
+      send(id_socket[currentConnection], "wait", strlen("wait"), 1024);
+
+      pthread_create(&tid[currentConnection], NULL, handleStart, &new_socket);
+    } else {
+      printf("📩 sending go signal to currentConnection: %d\n",
+             currentConnection);
+      send(id_socket[currentConnection], "go", strlen("go"), 1024);
+
+      pthread_create(&tid[currentConnection], NULL, handleStart, &new_socket);
+    }
+    connection++;
+    currentConnection++;
+  }
+
+  return 0;
+}
+
+void *handleStart(void *args) {
+    int new_socket = *(int *)args;
     int valread;
     char buffer[1024] = {0};
     valread = read(new_socket, buffer, 1024);
     printf("🚀 [main()] first command: %s\n", buffer);
+
+    // TODO REMOVE TEMPORARY STOP
+    if (strcmp(buffer, "stop") == 0) {
+      printf(
+          "🚀 [handleLogReg()] just got stop signal, proceeding "
+          "handleStopConnection()\n");
+      handleStopConnection(new_socket);
+    }
+
 
     if (!strcmp(buffer, "database")) {
       handleDatabase(new_socket);
@@ -96,10 +140,21 @@ int main(int argc, char const *argv[]) {
       handleDropDb(new_socket);
     } else if (!strcmp(buffer, "drop-table")) {
       handleDropTable(new_socket);
-    } 
-  }
+    } else if (!strcmp(buffer, "drop-column")) {
+      handleDropColumn(new_socket);
+    } else if (!strcmp(buffer, "select")) {
+      handleSelect(new_socket);
+    } else if (!strcmp(buffer, "delete")) {
+      handleDelete(new_socket);
+    } else if (!strcmp(buffer, "update")) {
+      handleUpdate(new_socket);
+    } else if (!strcmp(buffer, "show-db")) {
+      handleShowDb(new_socket);
+    }
 
-  return 0;
+    handleStart(&new_socket);
+    pthread_cancel(pthread_self());
+    
 }
 
 void handleDatabase(int sock) {
@@ -375,4 +430,373 @@ void handleDropTable(int sock) {
 
   sendSuccess(sock);
   return;
+}
+
+void handleSelect(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleSelect()] first command: %s\n", buffer);
+
+  if (!strlen(databaseUsed)) {
+    sendError(sock, "No Database Used, try to run USE dbName;");
+    return;
+  }
+
+  // TODO GET COLUMNS AND TABLENAME
+  char columns[200], tableName[200];
+
+  char* token = strtok(buffer, "FROM");
+  int count = 0;
+  while (token) {
+    printf("token: %s\n", token);
+
+    if (count == 0) {
+      strcpy(columns, token);
+      columns[strlen(columns) - 1] = '\0';
+    } else {
+      strcpy(tableName, token);
+      tableName[strlen(tableName) - 1] = '\0';
+    }
+
+    count++;
+    token = strtok (NULL, "FROM");
+    while (token && *token == '\040')
+        token++;
+  }
+
+  // TODO CHECK IF TABLE EXISTS
+  char tablePath[2100];
+  sprintf(tablePath, "databases/%s/%s", databaseUsed, tableName);
+  FILE* fp = fopen(tablePath, "r");
+
+  if (!fp) {
+    sendError(sock, "No Database Found");
+    return;
+  }
+
+  char resultBuffer[10000];
+  strcat(resultBuffer, "🐉 SUCCESS\n=============\nTable Result:\n");
+
+  // TODO IF * SELECT
+  if (!strcmp(columns, "*")) {
+    char line[256];
+    while (fgets(line, sizeof line, fp) != NULL) {
+      strcat(resultBuffer, line);
+    }
+    fclose(fp);
+  } else {
+    // TODO PARSE COLUMNS TO ARRAY
+    char* column = strtok(columns, ",");
+    char columnList[200][200];
+    int columnCount = 0;
+    while (column) {
+      strcpy(columnList[columnCount], column);
+
+      columnCount++;
+      column = strtok (NULL, ",");
+      while (column && *column == '\040')
+          column++;
+    }
+
+    // CREATE VAR COMMAND $(f["foo"]), $(f["bar"])
+    char varCmd[500];
+    for(int i = 0; i < columnCount; i++){
+      char eachvar[321];
+      sprintf(eachvar, "$(f[\"%s\"])", columnList[i]);
+      if (i != 0) {
+        strcat(varCmd, ", ");
+      }
+      strcat(varCmd, eachvar);
+    }
+
+    // TODO AWK CMD
+    char awkCmd[3000];
+    sprintf(awkCmd, "awk -F\";\" \'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}}{ print %s }\' %s",varCmd, tablePath);
+
+    char path[1035];
+    fp = popen(awkCmd, "r");
+    while (fgets(path, sizeof(path), fp) != NULL) {
+      strcat(resultBuffer, path);
+    }
+    /* close */
+    pclose(fp);
+  }
+
+  
+  send(sock, resultBuffer, strlen(resultBuffer), 0);
+  return;
+}
+
+void handleDelete(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleDelete()] first command: %s\n", buffer);
+
+  if (!strlen(databaseUsed)) {
+    sendError(sock, "No Database Used, try to run USE dbName;");
+    return;
+  }
+
+  // TODO CHECK IF TABLE EXISTS
+  char tablePath[2100];
+  sprintf(tablePath, "databases/%s/%s", databaseUsed, buffer);
+  FILE* fp = fopen(tablePath, "r");
+
+  if (!fp) {
+    sendError(sock, "No Database Found");
+    return;
+  }
+
+  
+  FILE* fp2 = fopen("temp", "w");
+
+  char data[256];
+  int count = 0;
+  while (fgets(data, sizeof data, fp) != NULL) {
+    printf("data: %s", data);
+
+    // If the first 2 line
+    if (count <= 1){
+      fprintf(fp2, "%s", data);
+    }
+    count++;
+    // bzero(data, 1024);
+  }
+  fclose(fp);
+  fclose(fp2);
+  remove(tablePath);
+  rename("temp", tablePath);
+
+  sendSuccess(sock);
+  return;
+}
+
+void handleUpdate(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleUpdate()] first command: %s\n", buffer);
+
+
+  char structure[1024] = {0};
+  valread = read(sock, structure, 1024);
+  structure[strlen(structure) - 1] = '\0';
+
+  if (!strlen(databaseUsed)) {
+    sendError(sock, "No Database Used, try to run USE dbName;");
+    return;
+  }
+
+  // TODO CHECK IF TABLE EXISTS
+  char tablePath[2100];
+  sprintf(tablePath, "databases/%s/%s", databaseUsed, buffer);
+  FILE* fp = fopen(tablePath, "r");
+
+  if (!fp) {
+    sendError(sock, "No Database Found");
+    return;
+  }
+
+  // TODO COMPILE UPDATE QUERY
+  char* queryTok = strtok(structure, "=");
+  char queryTable[100], queryValue[100];
+  strcpy(queryTable, queryTok);
+  queryTok = strtok(NULL, "=");
+  strcpy(queryValue, queryTok);
+
+  printf("queryTable: %s\n",  queryTable);
+  printf("queryValue: %s\n",  queryValue);
+  
+  FILE* fp2 = fopen("temp", "w");
+
+  char data[256];
+  int count = 0, matchIndex;
+  while (fgets(data, sizeof data, fp) != NULL) {
+    printf("data: %s", data);
+    // remove '\n'
+    data[strcspn(data, "\n")] = 0;
+
+    // If the first 2 line
+    if (count == 0){
+      fprintf(fp2, "%s\n", data);
+      char* tabTok = strtok(data, ";");
+      int tabTokCount = 0;
+      while (tabTok) {
+        if (!strcmp(tabTok, queryTable)) {
+          matchIndex = tabTokCount;
+        }
+        tabTokCount++;
+        tabTok = strtok(NULL, ";");
+      }
+    } else if (count == 1) {
+      fprintf(fp2, "%s\n", data);
+    } else  {
+      char updatedRecord[200] = "";
+      char* tabTok = strtok(data, ";");
+      int tabTokCount = 0;
+      while (tabTok) {
+        // printf("tabtok: --%s--\n", tabTok);
+        if (tabTokCount == matchIndex) {
+          char temp[120];
+          sprintf(temp, "%s;", queryValue);
+          strcat(updatedRecord, temp);
+        } else {
+          char temp[120];
+          sprintf(temp, "%s;", tabTok);
+          strcat(updatedRecord, temp);
+        }
+        tabTokCount++;
+        tabTok = strtok(NULL, ";");
+      }
+      fprintf(fp2, "%s\n", updatedRecord);
+    }
+    count++;
+    // bzero(data, 1024);
+  }
+  fclose(fp);
+  fclose(fp2);
+  remove(tablePath);
+  rename("temp", tablePath);
+
+  sendSuccess(sock);
+  return;
+}
+
+void handleDropColumn(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleUpdate()] first command: %s\n", buffer);
+  buffer[strlen(buffer) - 1] = '\0';
+
+
+  char queryTable[1024] = {0};
+  valread = read(sock, queryTable, 1024);
+  printf("🚀 [handleUpdate()] queryTable: %s\n", queryTable);
+
+  if (!strlen(databaseUsed)) {
+    sendError(sock, "No Database Used, try to run USE dbName;");
+    return;
+  }
+
+  // TODO CHECK IF TABLE EXISTS
+  char tablePath[2100];
+  sprintf(tablePath, "databases/%s/%s", databaseUsed, buffer);
+  FILE* fp = fopen(tablePath, "r");
+
+  if (!fp) {
+    sendError(sock, "No Database Found");
+    return;
+  }
+
+  // // TODO COMPILE UPDATE QUERY
+  // char* queryTok = strtok(structure, "=");
+  // char queryTable[100], queryValue[100];
+  // strcpy(queryTable, queryTok);
+  // queryTok = strtok(NULL, "=");
+  // strcpy(queryValue, queryTok);
+
+  // printf("queryTable: %s\n",  queryTable);
+  // printf("queryValue: %s\n",  queryValue);
+  
+  FILE* fp2 = fopen("temp", "w");
+
+  char data[256];
+  int count = 0, matchIndex;
+  while (fgets(data, sizeof data, fp) != NULL) {
+    printf("data: %s", data);
+    // remove '\n'
+    data[strcspn(data, "\n")] = 0;
+
+    // If the first 2 line
+    if (count == 0){
+      char updatedRecord[200] = "";
+      char* tabTok = strtok(data, ";");
+      int tabTokCount = 0;
+      while (tabTok) {
+        if (!strcmp(tabTok, queryTable)) {
+          matchIndex = tabTokCount;
+        } else {
+          char temp[120];
+          sprintf(temp, "%s;", tabTok);
+          strcat(updatedRecord, temp);
+        }
+        tabTokCount++;
+        tabTok = strtok(NULL, ";");
+      }
+      fprintf(fp2, "%s\n", updatedRecord);
+    } else  {
+      char updatedRecord[200] = "";
+      char* tabTok = strtok(data, ";");
+      int tabTokCount = 0;
+      while (tabTok) {
+        // printf("tabtok: --%s--\n", tabTok);
+        if (tabTokCount == matchIndex) {
+          // do nothing
+        } else {
+          char temp[120];
+          sprintf(temp, "%s;", tabTok);
+          strcat(updatedRecord, temp);
+        }
+        tabTokCount++;
+        tabTok = strtok(NULL, ";");
+      }
+      fprintf(fp2, "%s\n", updatedRecord);
+    }
+    count++;
+    // bzero(data, 1024);
+  }
+  fclose(fp);
+  fclose(fp2);
+  remove(tablePath);
+  rename("temp", tablePath);
+
+  sendSuccess(sock);
+  return;
+}
+
+void handleShowDb(int sock) {
+  FILE* fp = fopen("dblist.txt", "r");
+
+  char sendBuffer[10024] = "\n=============\nList of Database: \n";
+  char line[256];
+  while (fgets(line, sizeof line, fp) != NULL) {
+    strcat(sendBuffer, line);
+  }
+  fclose(fp);
+
+  send(sock, sendBuffer, strlen(sendBuffer), 0);
+
+  return;
+}
+
+void handleStopConnection(int sock) {
+  connection--;
+
+  // ambil connection sebelumnya
+  // currentConnection--;
+  // go to next connection in queue
+  queue++;
+  printf("🐮 connection:  %d\n", connection);
+  printf("🐮 currentConnection:  %d\n", currentConnection);
+  printf("🐮 queue:  %d\n", queue);
+
+  printf("🚥 sending signal to queue: %d is closed to next connectio\n", queue);
+  send(id_socket[queue], "go", strlen("go"), 1024);
+
+  // Reset count connection and use the available tid;
+  if (queue == currentConnection) {
+    queue = 0;
+    currentConnection = 0;
+    printf("🐮🕓 currentConnection:  %d\n", currentConnection);
+    printf("🐮🕓 queue:  %d\n", queue);
+  }
+
+  pthread_cancel(pthread_self());
 }
