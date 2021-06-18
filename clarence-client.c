@@ -95,7 +95,7 @@ void promptDataManipulation(int sock) {
       sleep(0.2);
 
       promptTable(sock, tableName, tableStructure);
-      sprintf(commander,"CREATE TABLE %s",tableName);
+      sprintf(commander,"CREATE TABLE %s %s",tableName, tableStructure);
     // *================== CREATE DATABASE ==================
     } else if (!strcmp(type, "DATABASE")) {
       char dbName[100];
@@ -103,7 +103,7 @@ void promptDataManipulation(int sock) {
       send(sock, "database", strlen("database"), 0);
       sleep(0.2);
       promptDatabase(sock, dbName);
-      sprintf(commander,"CREATE TABLE %s", dbName);
+      sprintf(commander,"CREATE DATABASE %s", dbName);
     }
     // promptDatabase(sock);
     // *================== INSERT ==================
@@ -116,7 +116,7 @@ void promptDataManipulation(int sock) {
     send(sock, "insert", strlen("insert"), 0);
     sleep(0.2);
     promptInsert(sock, tableName, tableStructure);
-    sprintf(commander,"INSERT INTO %s %s)", tableName, tableStructure);
+    sprintf(commander,"INSERT INTO %s %s", tableName, tableStructure);
 
     // *================== USE ==================
   } else if (!strcmp(command, "USE")) {
@@ -125,7 +125,7 @@ void promptDataManipulation(int sock) {
     send(sock, "use", strlen("use"), 0);
     sleep(0.2);
     promptUse(sock, dbName);
-    sprintf(commander,"USE %s)", dbName);
+    sprintf(commander,"USE %s", dbName);
   } else if (!strcmp(command, "DROP")) {
     char type[100];
     scanf("%s ", type);
@@ -136,7 +136,7 @@ void promptDataManipulation(int sock) {
       send(sock, "drop-table", strlen("drop-table"), 0);
       sleep(0.2);
       promptDropTable(sock, tableName);
-      sprintf(commander,"DROP TABLE %s)", tableName);
+      sprintf(commander,"DROP TABLE %s", tableName);
     // *================== DROP DATABASE ==================
     } else if (!strcmp(type, "DATABASE")) {
       char dbName[100];
@@ -144,7 +144,7 @@ void promptDataManipulation(int sock) {
       send(sock, "drop-db", strlen("drop-db"), 0);
       sleep(0.2);
       promptDropDb(sock, dbName);
-      sprintf(commander,"DROP DATABASE %s)", dbName);
+      sprintf(commander,"DROP DATABASE %s", dbName);
     // *================== DROP COLUMN ==================
     } else if (!strcmp(type, "COLUMN")) {
       char columnName[100], dbName[100];
@@ -152,7 +152,7 @@ void promptDataManipulation(int sock) {
       send(sock, "drop-column", strlen("drop-column"), 0);
       sleep(0.2);
       promptDropColumn(sock, dbName, columnName);
-      sprintf(commander,"DROP COLUMN %s FROM %s)", columnName, dbName);
+      sprintf(commander,"DROP COLUMN %s FROM %s", columnName, dbName);
     }
     // *================== SELECT ==================
   } else if (!strcmp(command, "SELECT")) {
