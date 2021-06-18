@@ -653,6 +653,7 @@ void handleUpdate(int sock) {
         tabTokCount++;
         tabTok = strtok(NULL, ";");
       }
+      updatedRecord[strlen(updatedRecord) - 1] = '\0';
       fprintf(fp2, "%s\n", updatedRecord);
     }
     count++;
@@ -730,6 +731,7 @@ void handleDropColumn(int sock) {
         tabTokCount++;
         tabTok = strtok(NULL, ";");
       }
+      updatedRecord[strlen(updatedRecord) - 1] = '\0';
       fprintf(fp2, "%s\n", updatedRecord);
     } else  {
       char updatedRecord[200] = "";
@@ -747,6 +749,7 @@ void handleDropColumn(int sock) {
         tabTokCount++;
         tabTok = strtok(NULL, ";");
       }
+      updatedRecord[strlen(updatedRecord) - 1] = '\0';
       fprintf(fp2, "%s\n", updatedRecord);
     }
     count++;
