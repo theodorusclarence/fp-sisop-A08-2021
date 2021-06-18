@@ -13,6 +13,7 @@ void promptTable(int sock, char *str, char *structure);
 void promptDatabase(int sock, char *str);
 void promptDropDb(int sock, char *str);
 void promptDropTable(int sock, char *str);
+void promptDropColumn(int sock, char *str, char *structure);
 void promptUse(int sock, char *str);
 void promptInsert(int sock, char *str, char *structure);
 void promptUpdate(int sock, char *str, char *structure);
@@ -120,6 +121,14 @@ void promptDataManipulation(int sock) {
       send(sock, "drop-db", strlen("drop-db"), 0);
       sleep(0.2);
       promptDropDb(sock, dbName);
+      sprintf(commander,"%s %s %s",command,type,dbName);
+    // *================== DROP COLUMN ==================
+    } else if (!strcmp(type, "COLUMN")) {
+      char columnName[100], dbName[100];
+      scanf("%s FROM %s", columnName, dbName);
+      send(sock, "drop-column", strlen("drop-column"), 0);
+      sleep(0.2);
+      promptDropColumn(sock, dbName, columnName);
       sprintf(commander,"%s %s %s",command,type,dbName);
     }
     // *================== SELECT ==================
@@ -229,6 +238,16 @@ void promptDelete(int sock, char *str) {
 }
 
 void promptUpdate(int sock, char* str, char* structure) {
+  // Send tableName
+  send(sock, str, strlen(str), 0);
+  sleep(0.1);
+
+  // send set properties
+  send(sock, structure, strlen(structure), 0);
+  return;
+}
+
+void promptDropColumn(int sock, char* str, char* structure) {
   // Send tableName
   send(sock, str, strlen(str), 0);
   sleep(0.1);
