@@ -48,7 +48,17 @@ int main(int argc, char const *argv[]) {
   }
 
   while (1) {
-    promptDataManipulation(sock);
+    char authMessage[1024] = {0};
+    int valread;
+    printf("🚀🕓 reading for authmessage \n");
+    valread = read(sock, authMessage, 1024);
+    printf("🚀 authMessage: %s\n", authMessage);
+
+    if (strcmp(authMessage, "wait") != 0) {
+      promptDataManipulation(sock);
+    } else {
+      printf("Waiting...\n");
+    }
   }
 
   return 0;
@@ -59,6 +69,12 @@ void promptDataManipulation(int sock) {
   char commander[301];
   printf("⏰ waiting promptDataManipulation\n");
   scanf("%s ", command);
+
+  if (strcmp(command, "stop") == 0) {
+    send(sock, "stop", strlen("stop"), 0);
+    exit(0);
+  }
+
   if (!strcmp(command, "CREATE")) {
     char type[100];
     scanf("%s ", type);
@@ -167,6 +183,8 @@ void promptDataManipulation(int sock) {
   valread = read(sock, buffer, 1024);
   printf("From Server: %s\n", buffer);
   logging("USER",commander);
+
+  promptDataManipulation(sock);
 };
 
 void promptTable(int sock, char *str, char *structure) {

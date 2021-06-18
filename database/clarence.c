@@ -12,7 +12,13 @@
 #define SIZE 1024
 
 char databaseUsed[1050];
+int connection = 0;
+int currentConnection = 0;
+int id_socket[1000];
+int queue = 0;
 
+void *handleStart(void *args);
+void handleStopConnection(int sock);
 void handleDatabase(int sock);
 void handleTable(int sock);
 void handleUse(int sock);
@@ -75,17 +81,51 @@ int main(int argc, char const *argv[]) {
 
   pthread_t tid[50];
 
-  if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
-                           (socklen_t *)&addrlen)) < 0) {
-    perror("accept");
-    exit(EXIT_FAILURE);
-  }
 
   while (1) {
+    if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
+                            (socklen_t *)&addrlen)) < 0) {
+      perror("accept");
+      exit(EXIT_FAILURE);
+    }
+
+    id_socket[currentConnection] = new_socket;
+
+    if (connection > 0) {
+      printf("📩 sending wait signal to currentConnection: %d\n",
+             currentConnection);
+      send(id_socket[currentConnection], "wait", strlen("wait"), 1024);
+
+      pthread_create(&tid[currentConnection], NULL, handleStart, &new_socket);
+    } else {
+      printf("📩 sending go signal to currentConnection: %d\n",
+             currentConnection);
+      send(id_socket[currentConnection], "go", strlen("go"), 1024);
+
+      pthread_create(&tid[currentConnection], NULL, handleStart, &new_socket);
+    }
+    connection++;
+    currentConnection++;
+  }
+
+  return 0;
+}
+
+void *handleStart(void *args) {
+    int new_socket = *(int *)args;
     int valread;
     char buffer[1024] = {0};
     valread = read(new_socket, buffer, 1024);
     printf("🚀 [main()] first command: %s\n", buffer);
+
+    // TODO REMOVE TEMPORARY STOP
+    if (strcmp(buffer, "stop") == 0) {
+      printf(
+          "🚀 [handleLogReg()] just got stop signal, proceeding "
+          "handleStopConnection()\n");
+      handleStopConnection(new_socket);
+    }
+
 
     if (!strcmp(buffer, "database")) {
       handleDatabase(new_socket);
@@ -107,10 +147,11 @@ int main(int argc, char const *argv[]) {
       handleDelete(new_socket);
     } else if (!strcmp(buffer, "update")) {
       handleUpdate(new_socket);
-    } 
-  }
+    }
 
-  return 0;
+    handleStart(&new_socket);
+    pthread_cancel(pthread_self());
+    
 }
 
 void handleDatabase(int sock) {
@@ -715,4 +756,29 @@ void handleDropColumn(int sock) {
 
   sendSuccess(sock);
   return;
+}
+
+void handleStopConnection(int sock) {
+  connection--;
+
+  // ambil connection sebelumnya
+  // currentConnection--;
+  // go to next connection in queue
+  queue++;
+  printf("🐮 connection:  %d\n", connection);
+  printf("🐮 currentConnection:  %d\n", currentConnection);
+  printf("🐮 queue:  %d\n", queue);
+
+  printf("🚥 sending signal to queue: %d is closed to next connectio\n", queue);
+  send(id_socket[queue], "go", strlen("go"), 1024);
+
+  // Reset count connection and use the available tid;
+  if (queue == currentConnection) {
+    queue = 0;
+    currentConnection = 0;
+    printf("🐮🕓 currentConnection:  %d\n", currentConnection);
+    printf("🐮🕓 queue:  %d\n", queue);
+  }
+
+  pthread_cancel(pthread_self());
 }
