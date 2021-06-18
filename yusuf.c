@@ -90,6 +90,8 @@ void promptDataManipulation(int sock) {
       promptUser(sock,userName,password);
       sprintf(commander,"%s %s %s %s %s %s",command,type,userName,auth1,auth2,password);
       
+      
+
     // *================== CREATE DATABASE ==================
     } else if (!strcmp(type, "DATABASE")) {
       char dbName[100];
