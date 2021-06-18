@@ -8,6 +8,7 @@
 #include <unistd.h>
 #define PORT 8080
 
+void promptUser(int sock, char *user, char *password_user);
 void promptDataManipulation(int sock);
 void promptTable(int sock, char *str, char *structure);
 void promptDatabase(int sock, char *str);
@@ -17,6 +18,7 @@ void promptDropColumn(int sock, char *str, char *structure);
 void promptUse(int sock, char *str);
 void promptInsert(int sock, char *str, char *structure);
 void promptUpdate(int sock, char *str, char *structure);
+void promptGrant(int sock, char *str, char *structure);
 void promptSelect(int sock, char *str);
 void promptDelete(int sock, char *str);
 void promptShowDb(int sock, char *str);
@@ -32,7 +34,6 @@ int main(int argc, char const *argv[]) {
     printf("\n Socket creation error \n");
     return -1;
   }
-
   
   memset(&serv_addr, '0', sizeof(serv_addr));
 
@@ -104,6 +105,16 @@ void promptDataManipulation(int sock) {
       sleep(0.2);
       promptDatabase(sock, dbName);
       sprintf(commander,"CREATE DATABASE %s", dbName);
+    // *================== CREATE USER ==================
+    } else if (!strcmp(type, "USER")) {
+      char userName[100];
+      scanf(" %s", userName);
+      char password[100];
+      scanf(" IDENTIFIED BY %s", password);
+      send(sock, "user", strlen("user"), 0);
+      sleep(0.2);
+      promptUser(sock, userName, password);
+      sprintf(commander,"CREATE USER %s IDENTIFIED BY %s", userName, password);
     }
     // promptDatabase(sock);
     // *================== INSERT ==================
@@ -191,6 +202,17 @@ void promptDataManipulation(int sock) {
     sleep(0.2);
     // promptShowDb(sock);
     sprintf(commander,"%s DB",command);
+  } else if (!strcmp(command, "GRANT")) {
+    char dbName[1000];
+    scanf(" PERMISSION %s", dbName);
+    char userName[1000];
+    scanf(" INTO %s", userName);
+    send(sock, "permission", strlen("permission"), 0);
+
+    sleep(0.2);
+    promptUpdate(sock, dbName, userName);
+    // promptShowDb(sock);
+    sprintf(commander,"GRANT PERMISSION %s INTO %s", dbName, userName);
   }
 
   int valread;
@@ -290,6 +312,25 @@ void promptDropColumn(int sock, char* str, char* structure) {
   return;
 }
 
+
+void promptUser(int sock, char *user, char *password_user) {
+  send(sock, user, strlen(user), 0);
+  password_user[strlen(password_user) - 1] = '\0';
+  sleep(0.2);
+  send(sock, password_user, strlen(password_user), 0);
+  return;
+}
+
+void promptGrant(int sock, char *str, char *structure) {
+  // Send dbName
+  send(sock, str, strlen(str), 0);
+  sleep(0.1);
+
+  // send userName
+  structure[strlen(structure) - 1] = '\0';
+  send(sock, structure, strlen(structure), 0);
+  return;
+}
 
 void logging(const char *user, const char *commands) {
   FILE *fp;

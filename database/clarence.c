@@ -31,6 +31,7 @@ void handleDelete(int sock);
 void handleUpdate(int sock);
 void handleShowDb(int sock);
 void handleUser(int sock);
+void handleGrant(int sock);
 
 void sendSuccess(int sock) {
   send(sock, "🐉 SUCCESS", strlen("🐉 SUCCESS"), 0);
@@ -151,8 +152,10 @@ void *handleStart(void *args) {
       handleUpdate(new_socket);
     } else if (!strcmp(buffer, "show-db")) {
       handleShowDb(new_socket);
-    }else if (!strcmp(buffer, "user")) {
+    } else if (!strcmp(buffer, "user")) {
       handleUser(new_socket);
+    } else if (!strcmp(buffer, "permission")) {
+      handleGrant(new_socket);
     }
 
     handleStart(&new_socket);
@@ -813,19 +816,57 @@ void handleUser(int sock){
   valread = read(sock, buffer, 1024);
   printf("🚀 [handleUser()] Username: %s\n", buffer);
 
-  char buffer2[1024] = {0};
-  valread = read(sock, buffer2, 1024);
-  printf("🚀 [handleUser()] Password: %s\n", buffer2);
+  char password[1024] = {0};
+  valread = read(sock, password, 1024);
+  printf("🚀 [handleUser()] Password: %s\n", password);
 
   char userPass[2048];
-  // sprintf("%s %s")
 
   // WRITE username password
   FILE* fp = fopen("dataUser.txt", "a+");
-  fprintf(fp,"%s %s",buffer,buffer2);
+  fprintf(fp,"%s %s\n",buffer,password);
   fclose(fp);
 
   sendSuccess(sock);
   return;
 }
 
+void handleGrant(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleUpdate()] first command: %s\n", buffer);
+
+
+  char structure[1024] = {0};
+  valread = read(sock, structure, 1024);
+  structure[strlen(structure) - 1] = '\0';
+
+  // TODO CHECK DB EXISTS
+  FILE* fp = fopen("dblist.txt", "r");
+  int count = 0, found = 0;
+  char line[256];
+  while (fgets(line, sizeof line, fp) != NULL) {
+    // remove newline at the end
+    line[strcspn(line, "\n")] = 0;
+    if (!strcmp(line, buffer)){
+      found = 1;
+      break;
+    }
+    count++;
+  }
+  fclose(fp);
+  if (!found) {
+    sendError(sock, "No Database Found");
+  }
+  
+  char dbAccessPath[2100];
+  sprintf(dbAccessPath, "databases/%s/access", buffer);
+  fp = fopen(dbAccessPath, "a+");
+  fprintf(fp, "%s\n", structure);
+  fclose(fp);
+
+  sendSuccess(sock);
+  return;
+}
