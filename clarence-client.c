@@ -19,6 +19,7 @@ void promptInsert(int sock, char *str, char *structure);
 void promptUpdate(int sock, char *str, char *structure);
 void promptSelect(int sock, char *str);
 void promptDelete(int sock, char *str);
+void promptShowDb(int sock, char *str);
 void logging(const char *user, const char *commands);
 
 int main(int argc, char const *argv[]) {
@@ -47,6 +48,9 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
 
+  printf("========== IMPORTANT COMMANDS ===========\n");
+  printf("Stopping -> STOP DB;\n");
+
   while (1) {
     char authMessage[1024] = {0};
     int valread;
@@ -70,7 +74,7 @@ void promptDataManipulation(int sock) {
   printf("⏰ waiting promptDataManipulation\n");
   scanf("%s ", command);
 
-  if (strcmp(command, "stop") == 0) {
+  if (strcmp(command, "STOP") == 0) {
     send(sock, "stop", strlen("stop"), 0);
     exit(0);
   }
@@ -121,7 +125,6 @@ void promptDataManipulation(int sock) {
   } else if (!strcmp(command, "DROP")) {
     char type[100];
     scanf("%s ", type);
-
     // *================== DROP TABLE ==================
     if (!strcmp(type, "TABLE")) {
       char tableName[100];
@@ -176,6 +179,14 @@ void promptDataManipulation(int sock) {
     sleep(0.2);
     promptUpdate(sock, tableName, updateQuery);
     sprintf(commander,"%s %s SET %s",command, tableName, updateQuery);
+  } else if (!strcmp(command, "SHOW")) {
+    char temp[1000];
+    scanf("%s", temp);
+    send(sock, "show-db", strlen("show-db"), 0);
+
+    sleep(0.2);
+    // promptShowDb(sock);
+    sprintf(commander,"%s DB",command);
   }
 
   int valread;
@@ -274,6 +285,7 @@ void promptDropColumn(int sock, char* str, char* structure) {
   send(sock, structure, strlen(structure), 0);
   return;
 }
+
 
 void logging(const char *user, const char *commands) {
   FILE *fp;

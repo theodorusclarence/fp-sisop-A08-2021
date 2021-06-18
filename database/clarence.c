@@ -29,6 +29,7 @@ void handleDropColumn(int sock);
 void handleSelect(int sock);
 void handleDelete(int sock);
 void handleUpdate(int sock);
+void handleShowDb(int sock);
 
 void sendSuccess(int sock) {
   send(sock, "🐉 SUCCESS", strlen("🐉 SUCCESS"), 0);
@@ -147,6 +148,8 @@ void *handleStart(void *args) {
       handleDelete(new_socket);
     } else if (!strcmp(buffer, "update")) {
       handleUpdate(new_socket);
+    } else if (!strcmp(buffer, "show-db")) {
+      handleShowDb(new_socket);
     }
 
     handleStart(&new_socket);
@@ -755,6 +758,21 @@ void handleDropColumn(int sock) {
   rename("temp", tablePath);
 
   sendSuccess(sock);
+  return;
+}
+
+void handleShowDb(int sock) {
+  FILE* fp = fopen("dblist.txt", "r");
+
+  char sendBuffer[10024] = "\n=============\nList of Database: \n";
+  char line[256];
+  while (fgets(line, sizeof line, fp) != NULL) {
+    strcat(sendBuffer, line);
+  }
+  fclose(fp);
+
+  send(sock, sendBuffer, strlen(sendBuffer), 0);
+
   return;
 }
 
