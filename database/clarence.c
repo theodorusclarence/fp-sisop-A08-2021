@@ -30,6 +30,7 @@ void handleSelect(int sock);
 void handleDelete(int sock);
 void handleUpdate(int sock);
 void handleShowDb(int sock);
+void handleUser(int sock);
 
 void sendSuccess(int sock) {
   send(sock, "🐉 SUCCESS", strlen("🐉 SUCCESS"), 0);
@@ -150,6 +151,8 @@ void *handleStart(void *args) {
       handleUpdate(new_socket);
     } else if (!strcmp(buffer, "show-db")) {
       handleShowDb(new_socket);
+    }else if (!strcmp(buffer, "user")) {
+      handleUser(new_socket);
     }
 
     handleStart(&new_socket);
@@ -803,3 +806,26 @@ void handleStopConnection(int sock) {
 
   pthread_cancel(pthread_self());
 }
+
+void handleUser(int sock){
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleUser()] Username: %s\n", buffer);
+
+  char buffer2[1024] = {0};
+  valread = read(sock, buffer2, 1024);
+  printf("🚀 [handleUser()] Password: %s\n", buffer2);
+
+  char userPass[2048];
+  // sprintf("%s %s")
+
+  // WRITE username password
+  FILE* fp = fopen("dataUser.txt", "a+");
+  fprintf(fp,"%s %s",buffer,buffer2);
+  fclose(fp);
+
+  sendSuccess(sock);
+  return;
+}
+
