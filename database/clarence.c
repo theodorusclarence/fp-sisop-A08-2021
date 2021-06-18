@@ -1,4 +1,3 @@
-
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -20,6 +19,7 @@ void handleUse(int sock);
 void handleInsert(int sock);
 void handleDropDb(int sock);
 void handleDropTable(int sock);
+void handleSelect(int sock);
 
 void sendSuccess(int sock) {
   send(sock, "🐉 SUCCESS", strlen("🐉 SUCCESS"), 0);
@@ -96,6 +96,8 @@ int main(int argc, char const *argv[]) {
       handleDropDb(new_socket);
     } else if (!strcmp(buffer, "drop-table")) {
       handleDropTable(new_socket);
+    } else if (!strcmp(buffer, "select")) {
+      handleSelect(new_socket);
     } 
   }
 
@@ -374,5 +376,102 @@ void handleDropTable(int sock) {
   
 
   sendSuccess(sock);
+  return;
+}
+
+void handleSelect(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleSelect()] first command: %s\n", buffer);
+
+  if (!strlen(databaseUsed)) {
+    sendError(sock, "No Database Used, try to run USE dbName;");
+    return;
+  }
+
+  // TODO GET COLUMNS AND TABLENAME
+  char columns[200], tableName[200];
+
+  char* token = strtok(buffer, "FROM");
+  int count = 0;
+  while (token) {
+    printf("token: %s\n", token);
+
+    if (count == 0) {
+      strcpy(columns, token);
+      columns[strlen(columns) - 1] = '\0';
+    } else {
+      strcpy(tableName, token);
+      tableName[strlen(tableName) - 1] = '\0';
+    }
+
+    count++;
+    token = strtok (NULL, "FROM");
+    while (token && *token == '\040')
+        token++;
+  }
+
+  // TODO CHECK IF TABLE EXISTS
+  char tablePath[2100];
+  sprintf(tablePath, "databases/%s/%s", databaseUsed, tableName);
+  FILE* fp = fopen(tablePath, "r");
+
+  if (!fp) {
+    sendError(sock, "No Database Found");
+    return;
+  }
+
+  char resultBuffer[10000];
+  strcat(resultBuffer, "🐉 SUCCESS\n=============\nTable Result:\n");
+
+  // TODO IF * SELECT
+  if (!strcmp(columns, "*")) {
+    char line[256];
+    while (fgets(line, sizeof line, fp) != NULL) {
+      strcat(resultBuffer, line);
+    }
+    fclose(fp);
+  } else {
+    // TODO PARSE COLUMNS TO ARRAY
+    char* column = strtok(columns, ",");
+    char columnList[200][200];
+    int columnCount = 0;
+    while (column) {
+      strcpy(columnList[columnCount], column);
+
+      columnCount++;
+      column = strtok (NULL, ",");
+      while (column && *column == '\040')
+          column++;
+    }
+
+    // CREATE VAR COMMAND $(f["foo"]), $(f["bar"])
+    char varCmd[500];
+    for(int i = 0; i < columnCount; i++){
+      char eachvar[321];
+      sprintf(eachvar, "$(f[\"%s\"])", columnList[i]);
+      if (i != 0) {
+        strcat(varCmd, ", ");
+      }
+      strcat(varCmd, eachvar);
+    }
+
+    // TODO AWK CMD
+    char awkCmd[3000];
+    sprintf(awkCmd, "awk -F\";\" \'NR==1 {for (i=1; i<=NF; i++) {f[$i] = i}}{ print %s }\' %s",varCmd, tablePath);
+
+    char path[1035];
+    fp = popen(awkCmd, "r");
+    while (fgets(path, sizeof(path), fp) != NULL) {
+      strcat(resultBuffer, path);
+    }
+    /* close */
+    pclose(fp);
+  }
+
+  
+  send(sock, resultBuffer, strlen(resultBuffer), 0);
   return;
 }

@@ -15,6 +15,7 @@ void promptDropDb(int sock, char *str);
 void promptDropTable(int sock, char *str);
 void promptUse(int sock, char *str);
 void promptInsert(int sock, char *str, char *structure);
+void promptSelect(int sock, char *str);
 void logging(const char *user, const char *commands);
 
 int main(int argc, char const *argv[]) {
@@ -119,6 +120,14 @@ void promptDataManipulation(int sock) {
       promptDropDb(sock, dbName);
       sprintf(commander,"%s %s %s",command,type,dbName);
     }
+  } else if (!strcmp(command, "SELECT")) {
+    char commands[200];
+    scanf("%[^\n]s", commands);
+    send(sock, "select", strlen("select"), 0);
+
+    sleep(0.2);
+    promptSelect(sock, commands);
+    sprintf(commander,"%s %s",command, commands);
   }
 
   int valread;
@@ -175,6 +184,14 @@ void promptDropDb(int sock, char *str) {
 void promptDropTable(int sock, char *str) {
   // ? Remove `;`
   str[strlen(str) - 1] = '\0';
+
+  send(sock, str, strlen(str), 0);
+  return;
+}
+
+void promptSelect(int sock, char *str) {
+  // ? Remove `;`
+  // str[strlen(str) - 1] = '\0';
 
   send(sock, str, strlen(str), 0);
   return;
