@@ -29,7 +29,12 @@ int main(int argc, char const *argv[]) {
     printf("\n Socket creation error \n");
     return -1;
   }
-
+  if ((strcmp(argv[1], "-u") == 0) && strcmp(argv[3], "-p") == 0) {
+    char user[100];
+    char pass[100];
+    strcpy(user, argv[2]);
+    strcpy(pass, argv[4]);
+  }
   memset(&serv_addr, '0', sizeof(serv_addr));
 
   serv_addr.sin_family = AF_INET;
@@ -79,19 +84,18 @@ void promptDataManipulation(int sock) {
     else if (!strcmp(type, "USER")) {
       char userName[100];
       scanf("%s ", userName);
-      char auth1[10];
+      char auth1[11];
       scanf("%s ", auth1);
       char auth2[3];
       scanf("%s ", auth2);
+      if (!strcmp(auth1, "IDENTIFIED") && !strcmp(auth2, "BY") ){
       char password[100];
-      if (!strcmp(auth1, "TABLE"))
-      send(sock, "USER", strlen("USER"), 0);
+      scanf("%s ", password);
+      send(sock, "user", strlen("user"), 0);
       sleep(0.2);
       promptUser(sock,userName,password);
       sprintf(commander,"%s %s %s %s %s %s",command,type,userName,auth1,auth2,password);
-      
-      
-
+    }
     // *================== CREATE DATABASE ==================
     } else if (!strcmp(type, "DATABASE")) {
       char dbName[100];
@@ -202,13 +206,7 @@ void promptDropTable(int sock, char *str) {
 }
 
 void promptUser(int sock, char *user, char *password_user){
-  FILE *fp3;
-  fp3 = fopen("/home/yusuf/dataUser.txt", "a");
-  fputs(user, fp3);
-  fputs(" ", fp3);
-  fputs(password_user, fp3);
-  fputs("\n", fp3);
-  fclose(fp3);
+
   send(sock, user, strlen(user), 0);
   password_user[strlen(password_user) - 1] = '\0';
   send(sock, password_user, strlen(password_user), 0);
