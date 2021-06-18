@@ -21,6 +21,7 @@ void handleDropDb(int sock);
 void handleDropTable(int sock);
 void handleSelect(int sock);
 void handleDelete(int sock);
+void handleUpdate(int sock);
 
 void sendSuccess(int sock) {
   send(sock, "🐉 SUCCESS", strlen("🐉 SUCCESS"), 0);
@@ -101,6 +102,8 @@ int main(int argc, char const *argv[]) {
       handleSelect(new_socket);
     } else if (!strcmp(buffer, "delete")) {
       handleDelete(new_socket);
+    } else if (!strcmp(buffer, "update")) {
+      handleUpdate(new_socket);
     } 
   }
 
@@ -512,6 +515,98 @@ void handleDelete(int sock) {
     // If the first 2 line
     if (count <= 1){
       fprintf(fp2, "%s", data);
+    }
+    count++;
+    // bzero(data, 1024);
+  }
+  fclose(fp);
+  fclose(fp2);
+  remove(tablePath);
+  rename("temp", tablePath);
+
+  sendSuccess(sock);
+  return;
+}
+
+void handleUpdate(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleUpdate()] first command: %s\n", buffer);
+
+
+  char structure[1024] = {0};
+  valread = read(sock, structure, 1024);
+  structure[strlen(structure) - 1] = '\0';
+
+  if (!strlen(databaseUsed)) {
+    sendError(sock, "No Database Used, try to run USE dbName;");
+    return;
+  }
+
+  // TODO CHECK IF TABLE EXISTS
+  char tablePath[2100];
+  sprintf(tablePath, "databases/%s/%s", databaseUsed, buffer);
+  FILE* fp = fopen(tablePath, "r");
+
+  if (!fp) {
+    sendError(sock, "No Database Found");
+    return;
+  }
+
+  // TODO COMPILE UPDATE QUERY
+  char* queryTok = strtok(structure, "=");
+  char queryTable[100], queryValue[100];
+  strcpy(queryTable, queryTok);
+  queryTok = strtok(NULL, "=");
+  strcpy(queryValue, queryTok);
+
+  printf("queryTable: %s\n",  queryTable);
+  printf("queryValue: %s\n",  queryValue);
+  
+  FILE* fp2 = fopen("temp", "w");
+
+  char data[256];
+  int count = 0, matchIndex;
+  while (fgets(data, sizeof data, fp) != NULL) {
+    printf("data: %s", data);
+    // remove '\n'
+    data[strcspn(data, "\n")] = 0;
+
+    // If the first 2 line
+    if (count == 0){
+      fprintf(fp2, "%s\n", data);
+      char* tabTok = strtok(data, ";");
+      int tabTokCount = 0;
+      while (tabTok) {
+        if (!strcmp(tabTok, queryTable)) {
+          matchIndex = tabTokCount;
+        }
+        tabTokCount++;
+        tabTok = strtok(NULL, ";");
+      }
+    } else if (count == 1) {
+      fprintf(fp2, "%s\n", data);
+    } else  {
+      char updatedRecord[200] = "";
+      char* tabTok = strtok(data, ";");
+      int tabTokCount = 0;
+      while (tabTok) {
+        // printf("tabtok: --%s--\n", tabTok);
+        if (tabTokCount == matchIndex) {
+          char temp[120];
+          sprintf(temp, "%s;", queryValue);
+          strcat(updatedRecord, temp);
+        } else {
+          char temp[120];
+          sprintf(temp, "%s;", tabTok);
+          strcat(updatedRecord, temp);
+        }
+        tabTokCount++;
+        tabTok = strtok(NULL, ";");
+      }
+      fprintf(fp2, "%s\n", updatedRecord);
     }
     count++;
     // bzero(data, 1024);

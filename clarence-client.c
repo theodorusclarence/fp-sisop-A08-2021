@@ -15,6 +15,7 @@ void promptDropDb(int sock, char *str);
 void promptDropTable(int sock, char *str);
 void promptUse(int sock, char *str);
 void promptInsert(int sock, char *str, char *structure);
+void promptUpdate(int sock, char *str, char *structure);
 void promptSelect(int sock, char *str);
 void promptDelete(int sock, char *str);
 void logging(const char *user, const char *commands);
@@ -139,6 +140,17 @@ void promptDataManipulation(int sock) {
     sleep(0.2);
     promptDelete(sock, tableName);
     sprintf(commander,"%s FROM %s",command, tableName);
+  } else if (!strcmp(command, "UPDATE")) {
+    char tableName[100];
+    scanf("%s", tableName);
+    send(sock, "update", strlen("update"), 0);
+    char updateQuery[100];
+    scanf(" SET %s", updateQuery);
+
+
+    sleep(0.2);
+    promptUpdate(sock, tableName, updateQuery);
+    sprintf(commander,"%s %s SET %s",command, tableName, updateQuery);
   }
 
   int valread;
@@ -213,6 +225,16 @@ void promptDelete(int sock, char *str) {
   str[strlen(str) - 1] = '\0';
 
   send(sock, str, strlen(str), 0);
+  return;
+}
+
+void promptUpdate(int sock, char* str, char* structure) {
+  // Send tableName
+  send(sock, str, strlen(str), 0);
+  sleep(0.1);
+
+  // send set properties
+  send(sock, structure, strlen(structure), 0);
   return;
 }
 
