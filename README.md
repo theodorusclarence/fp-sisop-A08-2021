@@ -2,6 +2,21 @@
 
 ## Implemented
 
+Bagaimana Program Diakses
+
+- [x] Berjalan sebagai daemon
+- [x] Untuk bisa akses console database, perlu buka program client (kalau di linux seperti command mysql di bash)
+- [x] Program client dan utama berinteraksi lewat socket
+- [x] Program client bisa mengakses server dari mana aja
+
+Autentikasi
+
+- [ ] LOGIN
+- [ ] LOGIN SUDO
+- [x] CREATE USER
+- [x] USE (belum ngecek)
+- [x] GRANT PERMISSION
+
 Data Definition Language
 
 - [x] CREATE DATABASE
@@ -18,6 +33,15 @@ Data Manipulation Language
 - [x] SELECT \*
 - [x] SELECT KOLOM
 - [ ] WHERE
+
+Logging
+
+- [x] Logging sesuai format (min user)
+
+Reliability
+
+- [ ] program dump
+- [x] cron & zip bash
 
 Tambahan Requirement Minimum
 
