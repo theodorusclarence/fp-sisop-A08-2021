@@ -20,6 +20,7 @@ void handleInsert(int sock);
 void handleDropDb(int sock);
 void handleDropTable(int sock);
 void handleSelect(int sock);
+void handleDelete(int sock);
 
 void sendSuccess(int sock) {
   send(sock, "🐉 SUCCESS", strlen("🐉 SUCCESS"), 0);
@@ -98,6 +99,8 @@ int main(int argc, char const *argv[]) {
       handleDropTable(new_socket);
     } else if (!strcmp(buffer, "select")) {
       handleSelect(new_socket);
+    } else if (!strcmp(buffer, "delete")) {
+      handleDelete(new_socket);
     } 
   }
 
@@ -473,5 +476,51 @@ void handleSelect(int sock) {
 
   
   send(sock, resultBuffer, strlen(resultBuffer), 0);
+  return;
+}
+
+void handleDelete(int sock) {
+  // WAITING FOR MENU
+  int valread;
+  char buffer[1024] = {0};
+  valread = read(sock, buffer, 1024);
+  printf("🚀 [handleDelete()] first command: %s\n", buffer);
+
+  if (!strlen(databaseUsed)) {
+    sendError(sock, "No Database Used, try to run USE dbName;");
+    return;
+  }
+
+  // TODO CHECK IF TABLE EXISTS
+  char tablePath[2100];
+  sprintf(tablePath, "databases/%s/%s", databaseUsed, buffer);
+  FILE* fp = fopen(tablePath, "r");
+
+  if (!fp) {
+    sendError(sock, "No Database Found");
+    return;
+  }
+
+  
+  FILE* fp2 = fopen("temp", "w");
+
+  char data[256];
+  int count = 0;
+  while (fgets(data, sizeof data, fp) != NULL) {
+    printf("data: %s", data);
+
+    // If the first 2 line
+    if (count <= 1){
+      fprintf(fp2, "%s", data);
+    }
+    count++;
+    // bzero(data, 1024);
+  }
+  fclose(fp);
+  fclose(fp2);
+  remove(tablePath);
+  rename("temp", tablePath);
+
+  sendSuccess(sock);
   return;
 }
