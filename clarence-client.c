@@ -33,6 +33,12 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
 
+  if ((strcmp(argv[1], "-u") == 0) && strcmp(argv[3], "-p") == 0) {
+    char user[100];
+    char pass[100];
+    strcpy(user, argv[2]);
+    strcpy(user, argv[4]);
+  }
   memset(&serv_addr, '0', sizeof(serv_addr));
 
   serv_addr.sin_family = AF_INET;
