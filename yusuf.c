@@ -81,7 +81,6 @@ void promptDataManipulation(int sock) {
       scanf("%s ", userName);
       char auth1[10];
       scanf("%s ", auth1);
-      
       char auth2[3];
       scanf("%s ", auth2);
       char password[100];
