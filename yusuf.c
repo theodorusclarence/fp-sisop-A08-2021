@@ -15,3 +15,13 @@ void logging(const char *user, const char *commands) {
   fputs("\n", fp);
   fclose(fp);
 }
+void promptUser(int sock, char *user, char *password_user){
+  FILE *fp3;
+  fp3 = fopen("/home/yusuf/dataUser.txt", "a");
+  fputs(user, fp3);
+  fputs(" ", fp3);
+  fputs(password_user, fp3);
+  fputs("\n", fp);
+  fclose(fp);
+
+}
